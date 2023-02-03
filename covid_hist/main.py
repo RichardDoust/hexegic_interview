@@ -1,4 +1,39 @@
 import urllib.request
+import datetime
+import dateutil.relativedelta
+
+
+class StateData(object):
+    def __init__(self, state_name):
+        self.state_name = state_name
+
+    @staticmethod
+    def _get_last_month() -> str:
+        today = datetime.date.today()
+        last_month = today - dateutil.relativedelta.relativedelta(months=1)
+        last_month_str = last_month.strftime("%Y-%m-%d")
+
+        return last_month_str
+
+    def _get_last_months_url(self) -> str:
+
+        last_month = self._get_last_month()
+
+        state_data_last_month_url = f'https://healthdata.gov/resource/j8mb-icvb.csv?$query=SELECT%0A%20%20%60state' \
+                                    f'%60%2C%0A%20%20%60state_name%60%2C%0A%20%20%60state_fips%60%2C%0A%20%20%60fe' \
+                                    f'ma_region%60%2C%0A%20%20%60overall_outcome%60%2C%0A%20%20%60date%60%2C%0A%20' \
+                                    f'%20%60new_results_reported%60%2C%0A%20%20%60total_results_reported%60%2C%0A%' \
+                                    f'20%20%60geocoded_state%60%0AWHERE%0A%20%20(%60state_name%60%20IN%20(%22' \
+                                    f'{self.state_name}%22))%0A%20%20AND%20(%60date%60%20%3E%20%22{last_month}T11%' \
+                                    f'3A09%3A54%22%20%3A%3A%20floating_timestamp)%0AORDER%20BY%20%60date%60%20DESC' \
+                                    f'%20NULL%20LAST%2C%20%60overall_outcome%60%20ASC%20NULL%20LAST'
+
+        return state_data_last_month_url
+
+    def get_last_months_data(self):
+        data = urllib.request.urlopen(self._get_last_months_url())
+        for line in data:
+            print(line)
 
 
 if __name__ == '__main__':
@@ -23,26 +58,8 @@ if __name__ == '__main__':
                      'total_results_reported%60%2C%0A%20%20%60geocoded_state%60%0AWHERE%20%60state_name' \
                      '%60%20IN%20(%22Alabama%22)'
 
-    data = urllib.request.urlopen(state_data_url)
-    x = 1
-    for line in data:
-        print(x)
-        x += 1
-        str_line = line.decode('ascii')
-        print(str_line, end='')
-    # print(len(list(data)))
 
-    state_data_date_url = 'https://healthdata.gov/resource/j8mb-icvb.csv?$query=SELECT%0A%20%20%60state%60%2C%0A%20%' \
-                          '20%60state_name%60%2C%0A%20%20%60state_fips%60%2C%0A%20%20%60fema_region%60%2C%0A%20%20%6' \
-                          '0overall_outcome%60%2C%0A%20%20%60date%60%2C%0A%20%20%60new_results_reported%60%2C%0A%20%' \
-                          '20%60total_results_reported%60%2C%0A%20%20%60geocoded_state%60%0AWHERE%0A%20%20(%60' \
-                          'state_name%60%20IN%20(%22Alabama%22))%0A%20%20AND%20(%60date%60%20%3E%20%222023-01-25T11%' \
-                          '3A09%3A54%22%20%3A%3A%20floating_timestamp)'
-
-    state_data_last_month_url = 'https://healthdata.gov/resource/j8mb-icvb.csv?$query=SELECT%0A%20%20%60state%60%2C%' \
-                                '0A%20%20%60state_name%60%2C%0A%20%20%60state_fips%60%2C%0A%20%20%60fema_region%60%2' \
-                                'C%0A%20%20%60overall_outcome%60%2C%0A%20%20%60date%60%2C%0A%20%20%60new_results_rep' \
-                                'orted%60%2C%0A%20%20%60total_results_reported%60%2C%0A%20%20%60geocoded_state%60%0A' \
-                                'WHERE%0A%20%20(%60state_name%60%20IN%20(%22Alabama%22))%0A%20%20AND%20(%60date%60%2' \
-                                '0%3E%20%222023-01-03T11%3A09%3A54%22%20%3A%3A%20floating_timestamp)%0AORDER%20BY%20' \
-                                '%60date%60%20DESC%20NULL%20LAST%2C%20%60overall_outcome%60%20ASC%20NULL%20LAST'
+    cov_data = StateData('Alabama')
+    print(cov_data.state_name)
+    print(cov_data._get_last_months_url())
+    cov_data.get_last_months_data()
