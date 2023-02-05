@@ -1,6 +1,8 @@
 import urllib.request
 import datetime
 import dateutil.relativedelta
+import io
+import pandas as pd
 
 
 class StateData(object):
@@ -32,8 +34,19 @@ class StateData(object):
 
     def get_last_months_data(self):
         data = urllib.request.urlopen(self._get_last_months_url())
+        output = io.StringIO()
         for line in data:
+            output.write(line.decode('ascii'))
             print(line)
+
+        output.seek(0)
+        output_df = pd.read_csv(output)
+        print(output_df)
+
+        return output_df
+
+    def get_last_five_days_data(self):
+
 
 
 if __name__ == '__main__':
