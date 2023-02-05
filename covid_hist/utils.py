@@ -1,4 +1,5 @@
 import urllib.request
+import shutil
 
 
 def get_state_names() -> list:
@@ -14,6 +15,11 @@ def get_state_names() -> list:
 
     no_header = 1
     return state_names[no_header:]
+
+
+def zip_output_files(output_folder):
+    output_filename = output_folder + '.zip'
+    shutil.make_archive(output_filename, 'zip', output_folder)
 
 
 if __name__ == '__main__':

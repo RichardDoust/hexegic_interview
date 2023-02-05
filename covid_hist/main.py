@@ -3,6 +3,9 @@ import datetime
 import dateutil.relativedelta
 import io
 import pandas as pd
+import numpy as np
+import docx
+import os
 
 
 class StateData(object):
@@ -37,24 +40,72 @@ class StateData(object):
         output = io.StringIO()
         for line in data:
             output.write(line.decode('ascii'))
-            print(line)
 
         output.seek(0)
         output_df = pd.read_csv(output)
-        print(output_df)
 
         return output_df
 
     def get_last_five_days_data(self):
+        last_month_df = self.get_last_months_data()
+        pos_neg_df = last_month_df[last_month_df['overall_outcome'].isin(['Positive', 'Negative'])]
+        pos_neg_df['date'] = pd.to_datetime(pos_neg_df['date'])
+        max_date = pos_neg_df['date'].max()
+        cutoff_date = pos_neg_df["date"].max() - pd.Timedelta(days=5)
+        mask = (pos_neg_df['date'] > cutoff_date) & (pos_neg_df['date'] <= max_date)
 
+        return pos_neg_df[mask]
+
+    def get_sorted_latest_5_days_data(self):
+        five_days_df = self.get_last_five_days_data()
+        table = pd.pivot_table(five_days_df, values=['new_results_reported', 'total_results_reported'],
+                               index=['date'], columns=['overall_outcome'], aggfunc=np.sum)
+
+        table.columns = [s1 + '_' + str(s2) for (s1, s2) in table.columns.tolist()]
+        table['Date'] = table.index
+        table = table[["Date", "new_results_reported_Positive", "new_results_reported_Negative",
+                       "total_results_reported_Positive", "total_results_reported_Negative"]]
+        table = table.rename(columns={"new_results_reported_Positive": "New Positive Tests Reported",
+                              "new_results_reported_Negative": "New Negative Tests Reported",
+                              "total_results_reported_Positive": "Total Positive Tests Reported",
+                              "total_results_reported_Negative": "Total Negative Tests Reported"})
+
+        return table
+
+
+class WriteStateDataToWord(object):
+
+    def __init__(self, state_name, output_folder):
+        self.state_name = state_name
+        self.state_data = StateData(self.state_name)
+        self.output_folder = output_folder
+
+    def create_output_folder(self):
+        if not os.path.exists(self.output_folder):
+            os.mkdir(self.output_folder)
+
+    def write_data_to_word(self):
+        self.create_output_folder()
+        word_file_name = f'{self.output_folder}/{self.state_name}.docx'
+        doc = docx.Document()
+        today = str(datetime.date.today())
+        heading = self.state_name + ', ' + today
+        doc.add_heading(heading, 1)
+
+        df = self.state_data.get_sorted_latest_5_days_data()
+        t = doc.add_table(df.shape[0] + 1, df.shape[1])
+
+        for j in range(df.shape[-1]):
+            t.cell(0, j).text = df.columns[j]
+
+        for i in range(df.shape[0]):
+            for j in range(df.shape[-1]):
+                t.cell(i + 1, j).text = str(df.values[i, j])
+
+        doc.save(word_file_name)
 
 
 if __name__ == '__main__':
-    target_url = 'https://healthdata.gov/resource/j8mb-icvb.csv?$query=SELECT%0A%20%20%60state%60%2C%0A%20%20%60' \
-                 'state_name%60%2C%0A%20%20%60state_fips%60%2C%0A%20%20%60fema_region%60%2C%0A%20%20%60overall_' \
-                 'outcome%60%2C%0A%20%20%60date%60%2C%0A%20%20%60new_results_reported%60%2C%0A%20%20%60total_' \
-                 'results_reported%60%2C%0A%20%20%60geocoded_state%60'
-
 
     state_names = ["Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware",
                    "District of Columbia", "Florida", "Georgia", "Guam", "Hawaii", "Idaho", "Illinois", "Indiana",
@@ -65,14 +116,6 @@ if __name__ == '__main__':
                    "South Dakota", "Tennessee", "Texas", "U.S. Virgin Islands", "Utah", "Vermont", "Virginia",
                    "Washington", "West Virginia", "Wisconsin", "Wyoming"]
 
-    state_data_url = 'https://healthdata.gov/resource/j8mb-icvb.csv?$query=SELECT%0A%20%20%60state%60%2C%0A%20%20%60' \
-                     'state_name%60%2C%0A%20%20%60state_fips%60%2C%0A%20%20%60fema_region%60%2C%0A%20%20%60overall_' \
-                     'outcome%60%2C%0A%20%20%60date%60%2C%0A%20%20%60new_results_reported%60%2C%0A%20%20%60' \
-                     'total_results_reported%60%2C%0A%20%20%60geocoded_state%60%0AWHERE%20%60state_name' \
-                     '%60%20IN%20(%22Alabama%22)'
+    write_data = WriteStateDataToWord('Alabama', './output')
+    write_data.write_data_to_word()
 
-
-    cov_data = StateData('Alabama')
-    print(cov_data.state_name)
-    print(cov_data._get_last_months_url())
-    cov_data.get_last_months_data()
