@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import docx
 import os
+from utils import get_state_names, zip_output_files
 
 
 class StateData(object):
@@ -23,19 +24,20 @@ class StateData(object):
     def _get_last_months_url(self) -> str:
 
         last_month = self._get_last_month()
-
+        clean_state_name = self.state_name.replace(' ', '%20')
         state_data_last_month_url = f'https://healthdata.gov/resource/j8mb-icvb.csv?$query=SELECT%0A%20%20%60state' \
                                     f'%60%2C%0A%20%20%60state_name%60%2C%0A%20%20%60state_fips%60%2C%0A%20%20%60fe' \
                                     f'ma_region%60%2C%0A%20%20%60overall_outcome%60%2C%0A%20%20%60date%60%2C%0A%20' \
                                     f'%20%60new_results_reported%60%2C%0A%20%20%60total_results_reported%60%2C%0A%' \
                                     f'20%20%60geocoded_state%60%0AWHERE%0A%20%20(%60state_name%60%20IN%20(%22' \
-                                    f'{self.state_name}%22))%0A%20%20AND%20(%60date%60%20%3E%20%22{last_month}T11%' \
+                                    f'{clean_state_name}%22))%0A%20%20AND%20(%60date%60%20%3E%20%22{last_month}T11%' \
                                     f'3A09%3A54%22%20%3A%3A%20floating_timestamp)%0AORDER%20BY%20%60date%60%20DESC' \
                                     f'%20NULL%20LAST%2C%20%60overall_outcome%60%20ASC%20NULL%20LAST'
 
         return state_data_last_month_url
 
     def get_last_months_data(self):
+        print(self._get_last_months_url())
         data = urllib.request.urlopen(self._get_last_months_url())
         output = io.StringIO()
         for line in data:
@@ -107,15 +109,13 @@ class WriteStateDataToWord(object):
 
 if __name__ == '__main__':
 
-    state_names = ["Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", "Delaware",
-                   "District of Columbia", "Florida", "Georgia", "Guam", "Hawaii", "Idaho", "Illinois", "Indiana",
-                   "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Marshall Islands", "Maryland", "Massachusetts",
-                   "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire",
-                   "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Northern Mariana Islands",
-                   "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Puerto Rico", "Rhode Island", "South Carolina",
-                   "South Dakota", "Tennessee", "Texas", "U.S. Virgin Islands", "Utah", "Vermont", "Virginia",
-                   "Washington", "West Virginia", "Wisconsin", "Wyoming"]
+    state_names = get_state_names()
+    output_folder = './output'
+    for name in state_names:
+        try:
+            write_data = WriteStateDataToWord(name, output_folder)
+            write_data.write_data_to_word()
+        except Exception as e:
+            print(f'Failed for state: {name}, Error:{e}')
 
-    write_data = WriteStateDataToWord('Alabama', './output')
-    write_data.write_data_to_word()
-
+    zip_output_files(output_folder)

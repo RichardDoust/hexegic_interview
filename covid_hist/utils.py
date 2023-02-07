@@ -18,8 +18,7 @@ def get_state_names() -> list:
 
 
 def zip_output_files(output_folder):
-    output_filename = output_folder + '.zip'
-    shutil.make_archive(output_filename, 'zip', output_folder)
+    shutil.make_archive(output_folder, 'zip', output_folder)
 
 
 if __name__ == '__main__':

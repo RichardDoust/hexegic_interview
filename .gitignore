@@ -1,2 +1,5 @@
 .idea/
-.output/
+output/
+covid_hist/__pycache__/
+.DS_Store
+output.zip
